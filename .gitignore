@@ -1,4 +1,4 @@
 /.vscode
-/PyWeightMap.cpython-310-x86_64-linux-gnu.so
-/example.cpp
-/example.cpython-310-x86_64-linux-gnu.so
+/PyWeightMap.egg-info
+/build
+/docs/_build

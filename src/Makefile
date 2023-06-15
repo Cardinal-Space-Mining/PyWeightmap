@@ -8,7 +8,7 @@ make:
 	g++ -O3 -flto -Wall -shared -std=c++14 -Wall -Wextra -s -fPIC $(pyBind11Include) $(src_files) -o PyWeightMap$(extSuffix)
 
 test:
-	python3 ./test.py
+	python3 ../tests/test.py
 
 example:
 	g++ -O3 -Wall -shared -std=c++11 -fPIC $(pyBind11Include) example.cpp -o example$(extSuffix)
