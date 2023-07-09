@@ -17,6 +17,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[options.extras_require]
+test =  ["pytest",  "pytest-doctestplus"]
+
 [project.urls]
 "Homepage" = "https://github.com/wimos-ai/PyWeightmap"
 "Bug Tracker" = "https://github.com/wimos-ai/PyWeightmap/issues"
+

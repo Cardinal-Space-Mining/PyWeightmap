@@ -2,3 +2,5 @@
 /PyWeightMap.egg-info
 /build
 /docs/_build
+/.pytest_cache
+__pycache__

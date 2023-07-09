@@ -6,8 +6,6 @@
 #include <limits>  //std::numeric_limits
 #include <utility> //std::pair
 
-
-
 // Shoving all following items in a namespace tells the compiler that they are
 // local to this compilation unit And allows for more agressive optimizations
 // and thus more SPEEEEEEEEEEED

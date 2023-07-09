@@ -12,37 +12,24 @@
 #include "BlockArray2D.hpp" // BlockArray2DRT
 
 // Weight Distribution
-class BoarderPlace
-{
-public:
-	explicit constexpr BoarderPlace(int i) : value((std::min)(i, (int)16)) // 16 is BoarderPlace::UNKNOWN.value
-	{
-	}
 
-	explicit constexpr BoarderPlace(uint8_t i) : value((std::min)(i, (uint8_t)16)) // 16 is BoarderPlace::UNKNOWN.value
-	{
-	}
-
-	bool contains(const BoarderPlace &other);
-
-	static const BoarderPlace TOP;
-	static const BoarderPlace BOTTOM;
-	static const BoarderPlace RIGHT;
-	static const BoarderPlace LEFT;
-	static const BoarderPlace UNKNOWN;
-
-private:
-	uint8_t value;
-
-public:
-	uint8_t get_value() const;
-
-	bool isValid() const;
-
-	BoarderPlace operator+(const BoarderPlace &b) const;
-
-	const char *to_string() const;
+enum BorderPlace: int{
+	TOP = 1 << 0,
+	BOTTOM = 1 << 1,
+	RIGHT = 1 <<2,
+	LEFT = 1 << 3,
+	UNKNOWN = 1 << 4
 };
+
+bool contains(const BorderPlace &self, const BorderPlace &other);
+bool isValid(const BorderPlace &self);
+const char *to_string(const BorderPlace &self);
+
+inline BorderPlace operator|(BorderPlace a, BorderPlace b)
+{
+    return static_cast<BorderPlace>(static_cast<int>(a) | static_cast<int>(b));
+}
+
 
 using mapsize_t = uint16_t;
 
@@ -52,51 +39,6 @@ using weight_t = uint16_t;
 
 using fweight_t = float;
 
-// Inner Class/Method Declarations
-enum class Color : mapsize_t
-{
-	BLACK = 0,
-	RED = 1,
-	GREEN = 2,
-	UNKNOWN = 3
-};
-
-typedef struct Node
-{
-	const mapsize_t x;
-	const mapsize_t y;
-	mapsize_t parent_x;
-	mapsize_t parent_y;
-	Color color;
-	weight_t weight;
-	fweight_t costFromSrc;
-
-	Node(const mapsize_t x,
-		 const mapsize_t y,
-		 const mapsize_t parent_x,
-		 const mapsize_t parent_y,
-		 const Color color,
-		 const weight_t weight,
-		 const fweight_t costFromSrc);
-} Node;
-
-struct DijkstrasMove
-{
-	int8_t dx;
-	int8_t dy;
-	fweight_t weight_multiplier;
-};
-
-class NodeCmp
-{
-public:
-	bool operator()(const Node &a, const Node &b);
-	bool operator()(const Node *a, const Node *b);
-};
-
-bool operator==(const Node &a, const Node &b);
-std::ostream &operator<<(std::ostream &os, const Node &n);
-std::ostream &operator<<(std::ostream &os, const Color &c);
 
 /// <summary>
 /// A dense weighted map for navigation purposes.
@@ -104,6 +46,71 @@ std::ostream &operator<<(std::ostream &os, const Color &c);
 /// </summary>
 class WeightMap
 {
+private:
+
+	// Inner Class/Method Declarations
+	enum class Color : mapsize_t
+	{
+		BLACK = 0,
+		RED = 1,
+		GREEN = 2,
+		UNKNOWN = 3
+	};
+
+	friend std::ostream &operator<<(std::ostream &os, const Color &c);
+
+	typedef struct Node
+	{
+		const mapsize_t x;
+		const mapsize_t y;
+		mapsize_t parent_x;
+		mapsize_t parent_y;
+		Color color;
+		weight_t weight;
+		fweight_t costFromSrc;
+
+		Node(const mapsize_t x,
+			const mapsize_t y,
+			const mapsize_t parent_x,
+			const mapsize_t parent_y,
+			const Color color,
+			const weight_t weight,
+			const fweight_t costFromSrc);
+		Node();
+
+		bool operator==(const Node &other);
+	} Node;
+
+	friend std::ostream &operator<<(std::ostream &os, const Node &n);
+
+	class NodeCmp
+	{
+	public:
+		bool operator()(const Node &a, const Node &b);
+		bool operator()(const Node *a, const Node *b);
+	};
+
+
+	struct DijkstrasMove
+	{
+		int8_t dx;
+		int8_t dy;
+		fweight_t weight_multiplier;
+	};
+
+	static constexpr fweight_t SQRT_2 = 1.42f; // Slightly more than actual sqrt2
+	static constexpr WeightMap::DijkstrasMove moves[] = {
+		{0, 1, 1},
+		{-1, 0, 1},
+		{0, -1, 1},
+		{1, 0, 1},
+		{1, 1, SQRT_2},
+		{-1, 1, SQRT_2},
+		{-1, -1, SQRT_2},
+		{1, -1, SQRT_2}};
+	static constexpr size_t numMoves = sizeof(moves) / sizeof(moves[0]);
+
+
 public:
 	using point_t = std::pair<mapsize_t, mapsize_t>;
 	using path_t = std::vector<WeightMap::point_t>;
@@ -153,7 +160,7 @@ public:
 
 	static void smoothPath(path_t& path, fweight_t allowed_ratio);
 
-	void addBoarder(mapsize_t boarder_width, weight_t boarder_weight, BoarderPlace place);
+	void addBoarder(mapsize_t boarder_width, weight_t boarder_weight, BorderPlace place);
 
 	void addObstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radius, weight_t weight, bool gradiant);
 
@@ -177,6 +184,10 @@ public:
 	static bool is_path_continuous(path_t &path);
 
 	static std::string point_to_string(const point_t &pt);
+
+	std::pair<const char*, const size_t> serialize() const;
+
+	static WeightMap deserialize(std::pair<const char*, const size_t> bytes);
 
 private:
 	// Helper Functions

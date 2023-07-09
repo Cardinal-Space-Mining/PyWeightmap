@@ -12,8 +12,10 @@
 #include <functional>
 #include <cassert>
 
+
+
 // Node Constructor
-Node::Node(const mapsize_t x_in,
+WeightMap::Node::Node(const mapsize_t x_in,
 		   const mapsize_t y_in,
 		   const mapsize_t parent_x_in,
 		   const mapsize_t parent_y_in,
@@ -22,57 +24,43 @@ Node::Node(const mapsize_t x_in,
 		   const fweight_t costFromSrc_in) : x(x_in), y(y_in), parent_x(parent_x_in), parent_y(parent_y_in),
 											 color(color_in), weight(weight_in), costFromSrc(costFromSrc_in){};
 
+WeightMap::Node::Node(): x(0), y(0), parent_x(0), parent_y(0), color(Color::BLACK), weight(0), costFromSrc(0){};
+
 //---------------	Boarder Place Methods	----------------------------
 
-const BoarderPlace BoarderPlace::TOP(1);
-const BoarderPlace BoarderPlace::BOTTOM(2);
-const BoarderPlace BoarderPlace::RIGHT(4);
-const BoarderPlace BoarderPlace::LEFT(8);
-const BoarderPlace BoarderPlace::UNKNOWN(16);
-
-uint8_t BoarderPlace::get_value() const { return value; }
-
-bool BoarderPlace::isValid() const
+bool contains(const BorderPlace &self, const BorderPlace &other){
+	return (static_cast<int>(self) & static_cast<int>(other)) == static_cast<int>(other);
+}
+bool isValid(const BorderPlace &self)
 {
-	return value < BoarderPlace::UNKNOWN.value;
+	return static_cast<int>(self) < static_cast<int>(BorderPlace::UNKNOWN);
 }
 
-BoarderPlace BoarderPlace::operator+(const BoarderPlace &b) const
-{
-
-	return BoarderPlace(b.value + this->value);
-}
-
-const char *BoarderPlace::to_string() const
-{
-	if (this->value == TOP.value)
+const char *to_string(const BorderPlace &self){
+	if (self == BorderPlace::TOP)
 	{
 		return "TOP";
 	}
-	if (this->value == BOTTOM.value)
+	if (self == BorderPlace::BOTTOM)
 	{
 		return "BOTTOM";
 	}
-	if (this->value == RIGHT.value)
+	if (self == BorderPlace::RIGHT)
 	{
 		return "RIGHT";
 	}
-	if (this->value == LEFT.value)
+	if (self == BorderPlace::LEFT)
 	{
 		return "LEFT";
 	}
 
-	if (this->value >= BoarderPlace::UNKNOWN.value)
+	if (static_cast<int>(self) >= static_cast<int>(BorderPlace::UNKNOWN))
 	{
 		return "UNKNOWN";
 	}
 
 	return "COMBO";
-}
 
-bool BoarderPlace::contains(const BoarderPlace &other)
-{
-	return (this->get_value() & other.get_value()) == other.get_value();
 }
 
 //---------------	WeightMap Methods	----------------------------
@@ -163,20 +151,6 @@ std::string WeightMap::to_string(bool extraData) const
 	return ss.str();
 }
 
-namespace WeightMapHelper
-{										// Internal Linkage please
-	constexpr fweight_t SQRT_2 = 1.42f; // Slightly more than actual sqrt2
-	constexpr DijkstrasMove moves[] = {
-		{0, 1, 1},
-		{-1, 0, 1},
-		{0, -1, 1},
-		{1, 0, 1},
-		{1, 1, SQRT_2},
-		{-1, 1, SQRT_2},
-		{-1, -1, SQRT_2},
-		{1, -1, SQRT_2}};
-	constexpr size_t numMoves = sizeof(moves) / sizeof(moves[0]);
-}
 
 WeightMap::path_t WeightMap::pathToXVal(mapsize_t srcX, mapsize_t srcY, mapsize_t dstX)
 {
@@ -205,7 +179,8 @@ WeightMap::path_t WeightMap::pathToXVal(mapsize_t srcX, mapsize_t srcY, mapsize_
 	src.costFromSrc = 0;
 
 	std::vector<Node *> queue_backer;
-	queue_backer.reserve(this->width * this->height);
+	queue_backer.reserve(
+		static_cast<size_t>(this->width) * static_cast<size_t>(this->height));
 	WeightMap::queue_t q(NodeCmp(), std::move(queue_backer));
 	q.push(&src);
 	while (!q.empty())
@@ -216,7 +191,6 @@ WeightMap::path_t WeightMap::pathToXVal(mapsize_t srcX, mapsize_t srcY, mapsize_
 		Node &currentNode = *q.top();
 		q.pop();
 
-		using namespace WeightMapHelper;
 		dijkstrasMakeMoves(moves, numMoves, currentNode, q);
 
 		if (dstX <= currentNode.x)
@@ -292,7 +266,6 @@ WeightMap::path_t WeightMap::getPath(mapsize_t srcX, mapsize_t srcY, mapsize_t d
 			break;
 		}
 
-		using namespace WeightMapHelper;
 		dijkstrasMakeMoves(moves, numMoves, currentNode, q);
 
 		currentNode.color = Color::GREEN;
@@ -334,10 +307,8 @@ void WeightMap::compressPath(path_t &path)
 
 void WeightMap::smoothPath(WeightMap::path_t &path, fweight_t allowed_ratio)
 {
-	size_t delta_size = 99999;
 	size_t start_size;
-	while (delta_size != 0)
-	{
+	do{
 		start_size = path.size();
 		for (size_t i = 1; i < path.size() - 1; i++)
 		{
@@ -347,31 +318,28 @@ void WeightMap::smoothPath(WeightMap::path_t &path, fweight_t allowed_ratio)
 				path.erase(path.begin() + (path_t::difference_type)i);
 			}
 		}
-		delta_size = start_size - path.size();
-	}
+	}while (start_size - path.size() != 0);
 }
 
 
 void WeightMap::theta_smooth_path(WeightMap::path_t &path)
 {
-	size_t delta_size = 99999;
-	
-	while (delta_size != 0)
-	{
-		const size_t start_size = path.size();
+	size_t start_size;
+	do{
+		start_size =  path.size();
 		for (size_t i = 1; i < path.size() - 1; i++)
 		{
-			Node &a = arr[path[i - 1].first][path[i - 1].second];
-			Node &c = arr[path[i + 1].first][path[i + 1].second];
-			const float direct_cost = this->get_linear_cost(a, c);
-			const float new_cost = direct_cost + a.costFromSrc;
-			if (new_cost < c.costFromSrc)
+			Node &left_node = arr[path[i - 1].first][path[i - 1].second];
+			Node &right_node = arr[path[i + 1].first][path[i + 1].second];
+			const float direct_cost = this->get_linear_cost(left_node, right_node);
+			const float new_cost = direct_cost + left_node.costFromSrc;
+			if (new_cost < right_node.costFromSrc)
 			{
 				//Remove Node B from path
 				path.erase(path.begin() + i);
 
 				//Update costs from source to reflect change
-				const float cost_difference = c.costFromSrc - new_cost;
+				const float cost_difference = right_node.costFromSrc - new_cost;
 				for (size_t a = i; a < path.size(); a++)
 				{
 					arr[path[a].first][path[a].second].costFromSrc -= cost_difference;
@@ -379,11 +347,10 @@ void WeightMap::theta_smooth_path(WeightMap::path_t &path)
 				break;
 			}
 		}
-		delta_size = start_size - path.size();
-	}
+	}while (start_size - path.size() != 0);
 }
 
-void WeightMap::addBoarder(mapsize_t boarder_width, weight_t boarder_weight, BoarderPlace place)
+void WeightMap::addBoarder(mapsize_t boarder_width, weight_t boarder_weight, BorderPlace place)
 {
 
 	if (!WeightMap::isValidWeight(boarder_weight))
@@ -393,25 +360,25 @@ void WeightMap::addBoarder(mapsize_t boarder_width, weight_t boarder_weight, Boa
 		throw std::invalid_argument(std::string(error_message));
 	}
 
-	if (!place.isValid())
+	if (!isValid(place))
 	{
 
 		char error_message[60];
-		std::snprintf(error_message, sizeof(error_message), "Place {0x%x} is invalid!", place.get_value());
+		std::snprintf(error_message, sizeof(error_message), "Place {0x%x} is invalid!", static_cast<int>(place));
 		throw std::invalid_argument(std::string(error_message));
 	}
 
-	if ((place.contains(BoarderPlace::TOP) || place.contains(BoarderPlace::BOTTOM)) && boarder_width > height)
+	if ((contains(place, BorderPlace::TOP) || contains(place, BorderPlace::BOTTOM)) && boarder_width > height)
 	{
 		throw std::invalid_argument("Boarder Width is greater than the height of the board");
 	}
 
-	if ((place.contains(BoarderPlace::RIGHT) || place.contains(BoarderPlace::LEFT)) && boarder_width > width)
+	if ((contains(place, BorderPlace::RIGHT) || contains(place, BorderPlace::LEFT)) && boarder_width > width)
 	{
 		throw std::invalid_argument("Boarder Width is greater than the widtg of the board");
 	}
 
-	if (place.contains(BoarderPlace::TOP))
+	if (contains(place, BorderPlace::TOP))
 	{
 		for (fast_mapsize_t y = 0; y < boarder_width; y++)
 		{
@@ -425,7 +392,7 @@ void WeightMap::addBoarder(mapsize_t boarder_width, weight_t boarder_weight, Boa
 		}
 	}
 
-	if (place.contains(BoarderPlace::BOTTOM))
+	if (contains(place, BorderPlace::BOTTOM))
 	{
 		for (fast_mapsize_t y = height - boarder_width; y < height; y++)
 		{
@@ -436,7 +403,7 @@ void WeightMap::addBoarder(mapsize_t boarder_width, weight_t boarder_weight, Boa
 		}
 	}
 
-	if (place.contains(BoarderPlace::RIGHT))
+	if (contains(place, BorderPlace::RIGHT))
 	{
 		for (fast_mapsize_t x = width - boarder_width; x < width; x++)
 		{
@@ -447,7 +414,7 @@ void WeightMap::addBoarder(mapsize_t boarder_width, weight_t boarder_weight, Boa
 		}
 	}
 
-	if (place.contains(BoarderPlace::LEFT))
+	if (contains(place, BorderPlace::LEFT))
 	{
 		for (fast_mapsize_t x = 0; x < boarder_width; x++)
 		{
@@ -742,7 +709,7 @@ fweight_t WeightMap::get_linear_cost(Node &a, Node &b)
 				// Only push neighbors if the line goes through this box
 				if (line_length > 0)
 				{
-					for (auto &move : WeightMapHelper::moves)
+					for (auto &move : WeightMap::moves)
 					{
 						const mapsize_t x = n.x + move.dx;
 						const mapsize_t y = n.y + move.dy;
@@ -755,7 +722,7 @@ fweight_t WeightMap::get_linear_cost(Node &a, Node &b)
 			}
 		}
 
-		linear_length -= (get_length_line_in_square(a.x + 0.5, a.y + 0.5, m, h) + get_length_line_in_square(b.x + 0.5, b.y + 0.5, m, h)) / 2;
+		//linear_length -= (get_length_line_in_square(a.x + 0.5, a.y + 0.5, m, h) + get_length_line_in_square(b.x + 0.5, b.y + 0.5, m, h)) / 2;
 
 		weight -= (get_length_line_in_square(a.x + 0.5, a.y + 0.5, m, h) * a.weight) / 2;
 		weight -= (get_length_line_in_square(b.x + 0.5, b.y + 0.5, m, h) * b.weight) / 2;
@@ -777,23 +744,90 @@ fweight_t WeightMap::length_ratio(WeightMap::point_t &l, WeightMap::point_t &m, 
 	return distance(l.first, l.second, r.first, r.second) / (distance(l.first, l.second, m.first, m.second) + distance(m.first, m.second, r.first, r.second));
 }
 
-//---------------	Node Methods	----------------------------
-bool operator==(const Node &a, const Node &b)
-{
-	return a.color == b.color && a.costFromSrc == b.costFromSrc && a.parent_x == b.parent_x && a.parent_y == b.parent_y && a.weight == b.weight && a.x == b.x && a.y == b.y;
+
+//Weight Map Serialization / Deserialization
+
+#if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+   #include <winsock.h>
+#elif __linux__
+    #include <arpa/inet.h>
+#else
+#   error "Unknown compiler"
+#endif
+
+
+
+std::pair<const char*, const size_t> WeightMap::serialize() const{
+	static_assert((sizeof(mapsize_t) == sizeof(weight_t)) && (sizeof(weight_t) == 2), "Current Serialization assumes 2 byte mapsize_t and weight_t due to htonl");
+	const size_t buff_size_bytes = (sizeof(mapsize_t) * 2) + (sizeof(weight_t) * this->width * this->height);
+	
+	char* const buff = (char*)malloc(buff_size_bytes);
+	if (buff == nullptr){
+		throw std::bad_alloc();
+	}
+
+	reinterpret_cast<mapsize_t*>(buff)[0]= htons(this->width);
+	reinterpret_cast<mapsize_t*>(buff)[1] = htons(this->height);
+
+	weight_t* const weight_buff = (weight_t*)&(((mapsize_t*) buff)[2]);
+	for (size_t y = 0; y < this->height; y++){
+		for (size_t x = 0; x <  this-> width; x++){
+			weight_buff[(y * this->width) + x] = htons(arr[x][y].weight);
+		}
+	}
+
+	return std::make_pair(buff, buff_size_bytes);
 }
 
-std::ostream &operator<<(std::ostream &os, const Color &c)
+WeightMap WeightMap::deserialize(std::pair<const char*, const size_t> bytes){
+	if (bytes.second <= 4){
+		throw std::invalid_argument("Not enough bytes to construct a WeightMap");
+	}
+
+
+	const char* const buff = bytes.first;
+
+	const mapsize_t* const map_buff = (const mapsize_t*)buff;
+
+	const mapsize_t width = ntohs(map_buff[0]);
+	const mapsize_t height = ntohs(map_buff[1]);
+
+	const size_t expected_buffer_size = (sizeof(mapsize_t) * 2) + (sizeof(weight_t) * width * height);
+	if (bytes.second < expected_buffer_size){
+		throw std::invalid_argument("Not enough bytes to construct a WeightMap of given size");
+	}
+
+	WeightMap wm(width, height);
+
+	const weight_t* const weight_buff = (const weight_t*)&(map_buff[2]);
+	for (size_t y = 0; y < height; y++){
+		for (size_t x = 0; x <  width; x++){
+			wm.arr[x][y].weight = ntohs(weight_buff[(y * width) + x]);
+		}
+	}
+
+	return wm;
+}
+
+//---------------	Node Methods	----------------------------
+bool WeightMap::Node::operator==(const WeightMap::Node &other)
+{
+	auto b = other;
+	auto a = *this;
+	return this->color == b.color && a.costFromSrc == b.costFromSrc && a.parent_x == b.parent_x && a.parent_y == b.parent_y && a.weight == b.weight && a.x == b.x && a.y == b.y;
+}
+
+std::ostream &operator<<(std::ostream &os, const WeightMap::Color &c)
 {
 	switch (c)
 	{
-	case Color::BLACK:
+	case WeightMap::Color::BLACK:
 		os << "BLACK";
 		break;
-	case Color::RED:
+	case WeightMap::Color::RED:
 		os << "RED";
 		break;
-	case Color::GREEN:
+	case WeightMap::Color::GREEN:
 		os << "GREEN";
 		break;
 	default:
@@ -804,7 +838,7 @@ std::ostream &operator<<(std::ostream &os, const Color &c)
 	return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const Node &n)
+std::ostream& operator<<(std::ostream &os, const WeightMap::Node &n)
 {
 	os << "{ X: " << n.x << "; Y: " << n.y << "; Weight: " << n.weight << "; Parent: (" << n.parent_x << ',' << n.parent_y << "); Color: " << n.color << "; CostFromSrc: " << n.costFromSrc << "}";
 	return os;
@@ -824,12 +858,12 @@ std::ostream &operator<<(std::ostream &os, const WeightMap &wm)
 	return os;
 }
 
-bool NodeCmp::operator()(const Node &a, const Node &b)
+bool WeightMap::NodeCmp::operator()(const Node &a, const Node &b)
 {
 	return a.costFromSrc > b.costFromSrc;
 }
 
-bool NodeCmp::operator()(const Node *a, const Node *b)
+bool WeightMap::NodeCmp::operator()(const Node *a, const Node *b)
 {
 	return a->costFromSrc > b->costFromSrc;
 }
