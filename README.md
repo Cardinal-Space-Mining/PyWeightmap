@@ -2,11 +2,12 @@
 Provides bindings to the C++ WeightMap class.
 
 # Installation
-Download source code, navigate to top level.
-Run pip install ./
+1. Download source code
+2. Navigate to top level.
+3. Run `pip install ./`
 
 # Documentation
-Download source code.
-Navigate to the docs directory
-Run make html
-Open ./docs/_build/html/PyWeightMap.html
+1. Download source code.
+2. Navigate to the docs directory
+3. Run `make html`
+4. Open `./docs/_build/html/PyWeightMap.html`
