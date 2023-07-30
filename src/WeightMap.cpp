@@ -742,7 +742,7 @@ fweight_t WeightMap::length_ratio(WeightMap::point_t &l, WeightMap::point_t &m, 
 
 #if defined(_MSC_VER) || defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
    #include <winsock.h>
-#elif __linux__
+#elif defined(__linux__) || defined(__APPLE__)
     #include <arpa/inet.h>
 #else
 #   error "Unknown compiler"

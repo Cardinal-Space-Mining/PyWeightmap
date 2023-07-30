@@ -27,7 +27,7 @@ const char *to_string(const BorderPlace &self);
 
 inline BorderPlace operator|(BorderPlace a, BorderPlace b)
 {
-    return static_cast<BorderPlace>(static_cast<int>(a) | static_cast<int>(b));
+    return static_cast<BorderPlace>(static_cast<std::underlying_type_t<BorderPlace>>(a) | static_cast<std::underlying_type_t<BorderPlace>>(b));
 }
 
 
@@ -53,8 +53,7 @@ private:
 	{
 		BLACK = 0,
 		RED = 1,
-		GREEN = 2,
-		UNKNOWN = 3
+		GREEN = 2
 	};
 
 	friend std::ostream &operator<<(std::ostream &os, const Color &c);
