@@ -66,6 +66,10 @@ const char *to_string(const BorderPlace &self){
 //---------------	WeightMap Methods	----------------------------
 WeightMap::WeightMap(mapsize_t width, mapsize_t height) : width(width), height(height), arr(width, height)
 {
+	if( width == 0 || height == 0){
+		throw std::invalid_argument("Zero passed as either width or height");
+	}
+
 	// Populate nodes
 	for (fast_mapsize_t x = 0; x < width; x++)
 	{
