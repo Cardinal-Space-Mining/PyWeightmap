@@ -80,6 +80,52 @@ WeightMap::WeightMap(mapsize_t width, mapsize_t height) : width(width), height(h
 	}
 }
 
+weight_t* WeightMap::getWeights() const{	
+	weight_t* const buff = new weight_t[this->width * this->height];
+
+	for (size_t y = 0; y < this->height; y++){
+		for (size_t x = 0; x <  this-> width; x++){
+			buff[(y * this->width) + x] = arr[x][y].weight;
+		}
+	}
+
+	return buff;
+}
+
+bool WeightMap::operator==(const WeightMap & other) const
+{
+	if(this->width != other.width || this->height != other.height){
+		return false;
+	}
+	for (size_t x = 0; x < this->width; x++){
+		for (size_t y = 0; y < this->height; y++){
+			if (this->arr[x][y].weight != other.arr[x][y].weight){
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+// Based off an implementation of Arrays.deepHashCode(e) from Java
+size_t WeightMap::hash() const{
+	constexpr const size_t P = 97;
+
+	const std::hash<mapsize_t> map_hashf;
+	const std::hash<weight_t> weight_hashf;
+
+	size_t hash = map_hashf(this->width) +  (map_hashf(this->height) * P);
+	
+	for (size_t x = 0; x < this->width; x++){
+		for (size_t y =0; y< this->height; y++){
+			const size_t element_hash = weight_hashf(this->arr[x][y].weight);
+			hash = (P * hash) + element_hash;
+		}
+	}
+	return hash;
+}
+
 weight_t WeightMap::getMaxWeightInMap() const
 {
 	weight_t curr_max = std::numeric_limits<weight_t>::min();
@@ -426,13 +472,16 @@ void WeightMap::addBoarder(mapsize_t boarder_width, weight_t boarder_weight, Bor
 	}
 }
 
-/*
-This is a specialization for the most common use case, an obstical fully in the field with a gradient being applied.
-We will do the gradient computation once, and take advantage of the lines of symmetry {x = 0, y = 0, x=y, y=-x}
-which should cut the number of gradient computations by 1/8
-*/
-void WeightMap::fast_add_obstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radius, weight_t weight)
+
+void WeightMap::addObstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radius, weight_t weight, bool gradient)
 {
+	if (!WeightMap::isValidWeight(weight))
+	{
+		char error_message[60];
+		std::snprintf(error_message, sizeof(error_message), "Weight {%u} out of bounds!", weight);
+		throw std::invalid_argument(std::string(error_message));
+	}
+
 	const fweight_t radius_f = radius; // Don't want to convert it to a float each time
 	for (size_t dy = radius; dy > 0; dy--)
 	{
@@ -455,89 +504,33 @@ void WeightMap::fast_add_obstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radi
 				break;
 			}
 
-			const fweight_t frac = 1.0 - (dist / radius_f);
-			const weight_t calculated_weight = frac * weight;
+			const weight_t calculated_weight = gradient ? (1.0 - (dist / radius_f)) * weight : weight;
 
-			arr[x_in + dx][y_in + dy].weight = std::max(calculated_weight, arr[x_in + dx][y_in + dy].weight); // Standard Location
-			arr[x_in - dx][y_in + dy].weight = std::max(calculated_weight, arr[x_in - dx][y_in + dy].weight); // Symmetry accross x-axis
-			arr[x_in + dx][y_in - dy].weight = std::max(calculated_weight, arr[x_in + dx][y_in - dy].weight); // Symmetry accross y-axis
-			arr[x_in - dx][y_in - dy].weight = std::max(calculated_weight, arr[x_in - dx][y_in - dy].weight); // Symmetry accross x = -y
+			//Calculate points
+			using point = std::pair<size_t, size_t>;
 
-			// Symmetry Accross X=Y
-			arr[x_in + dy][y_in + dx].weight = std::max(calculated_weight, arr[x_in + dy][y_in + dx].weight); // Standard Location
-			arr[x_in - dy][y_in + dx].weight = std::max(calculated_weight, arr[x_in - dy][y_in + dx].weight); // Symmetry accross x-axis
-			arr[x_in + dy][y_in - dx].weight = std::max(calculated_weight, arr[x_in + dy][y_in - dx].weight); // Symmetry accross y-axis
-			arr[x_in - dy][y_in - dx].weight = std::max(calculated_weight, arr[x_in - dy][y_in - dx].weight); // Symmetry accross x = -y
-		}
-	}
-	arr[x_in][y_in].weight = weight; // Standard Location
-}
+			point points[8] = {
+				{x_in + dx, y_in + dy}, // Standard Location
+				{x_in - dx, y_in + dy}, // Symmetry accross x-axis
+				{x_in + dx, y_in - dy}, // Symmetry accross y-axis
+				{x_in - dx, y_in - dy}, // Symmetry accross x = -y
 
-void WeightMap::slow_add_obstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radius, weight_t weight, bool gradiant)
-{
+				//These points are the above, but reflected across y=x
+				{x_in + dy, y_in + dx}, // Standard Location
+				{x_in - dy, y_in + dx}, // Symmetry accross x-axis
+				{x_in + dy, y_in - dx}, // Symmetry accross y-axis
+				{x_in - dy, y_in - dx}, // Symmetry accross x = -y
+			};
 
-	const fast_mapsize_t left_x_value((mapsize_t)std::max<int32_t>(x_in - radius, 0));
-	const fast_mapsize_t right_x_value((mapsize_t)std::min<int32_t>(x_in + radius, this->width));
-
-	const fast_mapsize_t top_y_value((mapsize_t)std::max<int32_t>(y_in - radius, 0));
-	const fast_mapsize_t bottom_y_value((mapsize_t)std::min<int32_t>(y_in + radius, this->height));
-
-	for (fast_mapsize_t x = left_x_value; x < right_x_value; x++)
-	{
-		for (fast_mapsize_t y = top_y_value; y < bottom_y_value; y++)
-		{
-			const fweight_t dist = distance(x, y, x_in, y_in);
-			if (!isValidPoint(x, y) || dist > radius)
-			{
-				continue;
-			}
-
-			Node &curNode = arr[x][y];
-
-			if (gradiant)
-			{
-				const fweight_t frac = 1 - (dist / radius);
-				const weight_t calculated_weight(frac * weight);
-				curNode.weight = std::max(calculated_weight, curNode.weight);
-			}
-			else
-			{
-				curNode.weight = weight;
+			for (const auto& pt: points){
+				if (isValidPoint(pt.first, pt.second)){ //Bounds check because people can add objects at the edge of the map
+					arr[pt.first][pt.second].weight = std::max(calculated_weight, arr[pt.first][pt.second].weight);
+				}
 			}
 		}
 	}
-}
 
-void WeightMap::addObstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radius, weight_t weight, bool gradiant)
-{
-	if (!isValidPoint(x_in, y_in))
-	{
-		char error_message[60];
-		std::snprintf(error_message, sizeof(error_message), "Point (%u, %u) out of bounds!", x_in, y_in);
-		throw std::invalid_argument(std::string(error_message));
-	}
-
-	if (!WeightMap::isValidWeight(weight))
-	{
-		char error_message[60];
-		std::snprintf(error_message, sizeof(error_message), "Weight {%u} out of bounds!", weight);
-		throw std::invalid_argument(std::string(error_message));
-	}
-
-	const int_fast32_t left_x_value(x_in - radius);
-	const int_fast32_t right_x_value(x_in + radius);
-
-	const int_fast32_t top_y_value(y_in - radius);
-	const int_fast32_t bottom_y_value(y_in + radius);
-
-	if ((left_x_value >= 0) && (right_x_value < this->width) && (top_y_value >= 0) && (bottom_y_value < this->height) && gradiant)
-	{
-		fast_add_obstical(x_in, y_in, radius, weight);
-	}
-	else
-	{
-		slow_add_obstical(x_in, y_in, radius, weight, gradiant);
-	}
+	arr[x_in][y_in].weight = std::max(weight, arr[x_in][y_in].weight); // Standard Location
 }
 
 bool WeightMap::isValidPoint(int32_t x, int32_t y) const

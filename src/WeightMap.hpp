@@ -179,6 +179,8 @@ public:
 		return weight <= WeightMap::getMaxWeight() && weight >= WeightMap::getMinWeight();
 	}
 
+	weight_t* getWeights() const;
+
 	static std::string path_to_str(path_t &path);
 
 	static bool is_path_continuous(path_t &path);
@@ -188,6 +190,10 @@ public:
 	std::pair<const char*, const size_t> serialize() const;
 
 	static WeightMap deserialize(std::pair<const char*, const size_t> bytes);
+
+	bool operator==(const WeightMap& other) const;
+
+	size_t hash() const;
 
 private:
 	// Helper Functions
@@ -200,10 +206,6 @@ private:
 	static fweight_t distance(fweight_t x1, fweight_t y1, fweight_t x2, fweight_t y2);
 
 	path_t generate_path(const Node &src, const Node &dst) const;
-
-	void fast_add_obstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radius, weight_t weight);
-
-	void slow_add_obstical(mapsize_t x_in, mapsize_t y_in, mapsize_t radius, weight_t weight, bool gradiant);
 
 	static fweight_t length_ratio(point_t& l, point_t& m, point_t& r);
 
@@ -218,4 +220,13 @@ private:
 
 	//Indexed in x-y form
 	BlockArray2DRT<Node> arr;
+};
+
+template <>
+struct std::hash<WeightMap>
+{
+  std::size_t inline operator()(const WeightMap& k) const
+  {
+    return k.hash();
+  }
 };
