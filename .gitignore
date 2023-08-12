@@ -4,3 +4,4 @@
 /docs/_build
 /.pytest_cache
 __pycache__
+src/PyWeightMap.egg-info
