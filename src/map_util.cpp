@@ -23,8 +23,8 @@ namespace
     } point_t;
 
     constexpr std::pair<point_t, point_t> INTERSECTION_FAILURE = {
-        {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()},
-        {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}};
+        {0,0},
+        {0,0};
 
     float distance(point_t p1, point_t p2)
     {
@@ -180,12 +180,5 @@ float get_length_line_in_square(float sq_x, float sq_y, float m, float b)
     //This simplifies later calculations and increases the accuracy of the result
 
     const auto intersection_pts = get_intersection_pts(sq_x, sq_y, m, b);
-    if (intersection_pts.first == INTERSECTION_FAILURE.first)
-    {
-        return 0;
-    }
-    else
-    {
-        return distance(intersection_pts.first, intersection_pts.second);
-    }
+    return distance(intersection_pts.first, intersection_pts.second);
 }
