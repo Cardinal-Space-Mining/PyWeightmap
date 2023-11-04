@@ -32,9 +32,14 @@ Provides bindings to the C++ WeightMap class.
     * min_weight
 
 # Installation
-1. Download source code
-2. Navigate to top level.
-3. Run `pip install ./`
+* Manual:
+  1. Download this repository
+  2. Navigate to the top level of the repository
+  3. Execute  `pip install ./`
+* Pip and git installed:
+   1. `pip install git+https://github.com/Cardinal-Space-Mining/PyWeightmap.git`
+* Only pip installed
+    1. `pip install https://github.com/Cardinal-Space-Mining/PyWeightmap/tarball/master`
 
 # Documentation
 1. Download source code.
