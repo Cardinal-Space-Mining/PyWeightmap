@@ -253,6 +253,8 @@ WeightMap::path_t WeightMap::pathToXVal(mapsize_t srcX, mapsize_t srcY, mapsize_
 
 	// We should not reach here. The if statement in the while loop should have triggered on the first node with the propper x-value
 	assert(false);
+	path_t EMPTY;
+	return EMPTY;
 }
 
 WeightMap::path_t WeightMap::generate_path(const Node &src, const Node &dst) const
