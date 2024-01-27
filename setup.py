@@ -17,7 +17,7 @@ ext_modules = [
     Pybind11Extension("PyWeightMap",
         sorted(glob.glob(path.join(".", "src", "*.cpp"))),
         libraries=libraries,
-        cxx_std = "c++14"
+        cxx_std = "14"
         ),
 ]
 
