@@ -24,7 +24,7 @@ namespace
 
     constexpr std::pair<point_t, point_t> INTERSECTION_FAILURE = {
         {0,0},
-        {0,0};
+        {0,0}};
 
     float distance(point_t p1, point_t p2)
     {
