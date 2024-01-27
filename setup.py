@@ -30,7 +30,7 @@ setup(
     description="A light weight and fast occupancy grid for Python3",
     long_description="",
     ext_modules=ext_modules,
-    extras_require={"test": "pytest"},
+    # extras_require={"test": "pytest"}, causes errors :(
     test_suite="tests",
     cmdclass={"build_ext": build_ext},
     zip_safe=False,
